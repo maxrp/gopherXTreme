@@ -1,19 +1,23 @@
+use "debug"
 use "net"
+use "files"
 
 class GopherListener is TCPListenNotify
-  let base: String
+  let base: FilePath
+  let host: String
+  let port: String
   let _out: OutStream
-  var _host: String = ""
-  var _port: String = ""
 
-  new iso create(out: OutStream, base': String) =>
+  new iso create(out: OutStream, base': FilePath, host': String, port': String) =>
     _out = out
     base = base'
+    host = host'
+    port = port'
 
   fun ref listening(listen: TCPListener ref) =>
     try
-      (_host, _port) = listen.local_address().name()?
-      _out.print("Listening on " + _host + ":" + _port)
+      (let bound_host, let bound_port) = listen.local_address().name()?
+      _out.print("Listening on " + bound_host + ":" + bound_port)
     else
       listen.close()
     end
@@ -23,4 +27,4 @@ class GopherListener is TCPListenNotify
     listen.close()
 
   fun ref connected(listen: TCPListener ref): TCPConnectionNotify iso^ =>
-    GopherServer(_out, base)
+    GopherServer(_out, host, port, base)

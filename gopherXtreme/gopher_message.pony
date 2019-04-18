@@ -49,11 +49,12 @@ class GopherMessage is Stringable
   let footer: Array[GopherItem]
 
   new create(header': Array[GopherItem],
-    items': Array[GopherItem],
-    footer': Array[GopherItem]) =>
+             items': Array[GopherItem]) =>
     header = header'
     items = items'
-    footer = footer'
+    footer = [GopherItem.spacer()
+              GopherItem.i("gopherXtreme/"+Version()
+                where align=AlignRight)]
 
   fun string(): String iso^ =>
     var message = recover String end
