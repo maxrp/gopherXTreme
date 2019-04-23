@@ -1,19 +1,27 @@
+use "backpressure"
 use "debug"
 use "files"
 use "format"
+use "logger"
 use "net"
 use "time"
 
 class GopherServer is TCPConnectionNotify
+  let _auth: BackpressureAuth
   let _base: FilePath
   let _host: String
   let _port: String
-  let _out: OutStream
+  let _log: Logger[String]
   var _remote_ip: String = ""
   var _remote_port: String = ""
 
-  new iso create(out: OutStream, host': String, port': String, base': FilePath) =>
-    _out = out
+  new iso create(auth': BackpressureAuth,
+                 log': Logger[String],
+                 host': String,
+                 port': String,
+                 base': FilePath) =>
+    _auth = auth'
+    _log = log'
     _base = base'
     _host = host'
     _port = port'
@@ -22,7 +30,19 @@ class GopherServer is TCPConnectionNotify
     try
       (_remote_ip, _remote_port) = conn.remote_address().name()?
     end
-    Debug.out("Connection accepted from: " + _remote_ip + ":" + _remote_port)
+    _log(Fine) and (
+        // if this'll be logged, allocate a string statically for msg
+        let msg = (recover String(_remote_ip.size()
+          + _remote_port.size()
+          + 20) // 19 bytes for "connection opened: " + 1 for ":"
+        end)
+          .> append("Connection opened: ")
+          .> append(_remote_ip)
+          .> append(":")
+          .> append(_remote_port)
+
+        _log.log(consume msg)
+    )
 
   fun ref received(conn: TCPConnection ref,
                    data: Array[U8] iso,
@@ -33,9 +53,10 @@ class GopherServer is TCPConnectionNotify
     let first_chars = reqstr.substring(0, 2)
 
     var selector = ""
+    let message =
     if consume first_chars == "\r\n" then
-      conn.write(_list_dir(_base, "/"))
       selector = "index"
+      _list_dir(_base, "/")
     else
       // prepare the selector
       selector = reqstr.clone().>strip()
@@ -48,18 +69,41 @@ class GopherServer is TCPConnectionNotify
         let path = FilePath(_base, selector.clone())?
         let path_info = FileInfo(path)?
         match path_info
-        | if path_info.directory => conn.write(_list_dir(path, selector))
-        | if path_info.file => conn.write(_stream_file(path))
+        | if path_info.directory => _list_dir(path, selector)
+        | if path_info.file => _send_file(path)
+        else
+          GopherMessage(
+            [GopherItem.spacer()
+             GopherItem.i(" wut?")],
+            [GopherItem.i(" ^_^Â ")]
+          ).string()
         end
       else
-        conn.write(_not_found(selector))
+        _not_found(selector)
       end
     end
-    _out.print(_remote_ip + " selected '" + consume selector + "'.")
+    let message_size: String = message.size().string()
+    conn.write(consume message)
+
+    _log(Info) and (
+      let msg = (recover String(_remote_ip.size()
+        + selector.size()
+        + message_size.size()
+        + 21) // length of static elements
+      end)
+        .> append(_remote_ip)
+        .> append(" selected '")
+        .> append(selector)
+        .> append("', ")
+        .> append(message_size)
+        .> append(" bytes.")
+      _log.log(consume msg)
+    )
+
     conn.dispose()
     true
 
-  fun _stream_file(path: FilePath): String =>
+  fun _send_file(path: FilePath): String =>
     try
       var file_contents = recover String end
       with file = OpenFile(path) as File do
@@ -85,7 +129,22 @@ class GopherServer is TCPConnectionNotify
                   [GopherItem.i("    " + selector)]).string()
 
   fun ref closed(conn: TCPConnection ref) =>
-    Debug.out("Connection closed: " + _remote_ip)
+    _log(Fine) and (
+      let msg = (recover
+        String(_remote_ip.size() + 19)
+      end)
+        .> append("Connection closed: ")
+        .> append(_remote_ip)
+
+      _log.log(consume msg)
+    )
 
   fun ref connect_failed(conn: TCPConnection ref) =>
-    Debug.out("Connect failed!")
+    _log(Fine) and
+      _log.log("Connect failed!")
+
+  fun ref throttled(connection: TCPConnection ref) =>
+    Backpressure.apply(_auth)
+
+  fun ref unthrottled(connection: TCPConnection ref) =>
+    Backpressure.release(_auth)

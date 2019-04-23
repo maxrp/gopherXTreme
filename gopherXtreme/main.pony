@@ -1,5 +1,7 @@
+use "backpressure"
 use "cli"
 use "files"
+use "logger"
 use "net"
 
 actor Main
@@ -59,10 +61,22 @@ actor Main
       return
     end
 
+    // Set up the logging facility
+    let log_formatter = TimestampLogFormatter("[%v %H:%M:%S] ")
+    let logger = StringLogger(
+      Fine,
+      env.out,
+      log_formatter)
+
     // Spin up the GopherListener
     try
       TCPListener(env.root as AmbientAuth,
-                  recover GopherListener(env.out, server_path, hostname, port_str.clone()) end,
+                  recover GopherListener(env.root as BackpressureAuth,
+                                         logger,
+                                         server_path,
+                                         hostname,
+                                         port_str.clone())
+                  end,
                   hostname,
                   port_str.clone())
     else
