@@ -8,7 +8,13 @@ class TimestampLogFormatter is LogFormatter
     _time_fmt = time_fmt'
 
   fun apply(msg: String, loc: SourceLoc): String =>
-    let timestamp = PosixDate(Time.seconds()).format(_time_fmt)
+    let timestamp =
+    try
+      PosixDate(Time.seconds()).format(_time_fmt)?
+    else
+      "TIME ERR"
+    end
+
 
     (recover
       String(timestamp.size() + msg.size())
