@@ -1,0 +1,10 @@
+# Within this project
+- Implement split messages for nicer directory listing format
+
+# To contribute back to Pony
+- fix example for Benchmark to include 'use "Benchmark"'
+- Add documentation for TCPListener._limit (is parallel connection limit)
+- Add documentation for TCPListener/TCPConnection._init_size (read buffer size, default=64)
+- Add documentation for TCPListener/TCPConnection._max_size  (read buffer size, default=16384)
+
+
