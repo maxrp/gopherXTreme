@@ -1,5 +1,6 @@
 # Within this project
 - Implement split messages for nicer directory listing format
+- Implement .hints.ini to provide listing annotations and directory sorting configuration
 
 # To contribute back to Pony
 - fix example for Benchmark to include 'use "Benchmark"'

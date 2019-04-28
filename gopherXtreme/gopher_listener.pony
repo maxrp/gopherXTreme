@@ -1,8 +1,7 @@
 use "backpressure"
-use "debug"
+use "files"
 use "logger"
 use "net"
-use "files"
 
 class GopherListener is TCPListenNotify
   let base: FilePath
