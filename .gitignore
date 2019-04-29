@@ -1,3 +1,4 @@
 build/*
-gopherXtreme/version.pony
+*/version.pony
 *.core
+*.pcap*

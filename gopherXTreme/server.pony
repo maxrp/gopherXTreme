@@ -16,6 +16,7 @@ class GopherServer is TCPConnectionNotify
   var _remote_port: String = ""
   var _selector: String = ""
   var _sent_size: USize = 0
+  var _streaming: Bool = false
 
   new iso create(auth': BackpressureAuth,
                  log': Logger[String],
@@ -51,16 +52,25 @@ class GopherServer is TCPConnectionNotify
   fun ref received(conn: TCPConnection ref,
                    data: Array[U8] iso,
                    times: USize): Bool =>
+    conn.mute()
 
-    var reqstr: String = String.from_array(consume data)
+    // enforce a maximum request length
+    if data.size() > _buffer_length then
+      data.trim_in_place(0, _buffer_length)
+    end
 
+    // truncate the request at null if present
+    try data.truncate(data.find('\0')?) end
+
+    var reqstr: String = String.from_iso_array(consume data)
     let message =
       if reqstr.at("\r") and reqstr.at("\n", 1) then
         _selector = "index"
         _list_dir(_base, "/")
       else
         // prepare the selector
-        _selector = reqstr.clone() .> strip()
+        _selector = reqstr.clone() .> rstrip()
+
         if _selector.at("/") then
           _selector = _selector.substring(1)
         end
@@ -85,7 +95,7 @@ class GopherServer is TCPConnectionNotify
         end
       end
     conn.write(consume message)
-
+    conn.unmute()
     conn.dispose()
     true
 
@@ -106,11 +116,13 @@ class GopherServer is TCPConnectionNotify
                        path: FilePath): String =>
     try
       with file = OpenFile(path) as File do
+        _streaming = true
         var counter: USize = 0
         while counter <= (file.size()/_buffer_length) do
           conn.write(file.read(_buffer_length))
           counter = counter + 1
         end
+        _streaming = false
       end
       ""
     else
@@ -120,14 +132,14 @@ class GopherServer is TCPConnectionNotify
   fun _list_dir(path: FilePath, rel_path: String): String =>
     var dir_entries: Array[GopherItem] = []
     let base = try FilePath(_base, rel_path)? else _base end
-    let dir_walker = GopherDirLister(dir_entries, base, rel_path, _host, _port)
-    path.walk(dir_walker)
+    let dir_menu = GopherDirMenu(dir_entries, base, rel_path, _host, _port)
+    path.walk(dir_menu)
     GopherMessage([GopherItem.i(" * Listing: " + rel_path)],
                   dir_entries).string()
 
-  fun _not_found(selector: String): String =>
-    GopherMessage([GopherItem.i(" * Not Found: "); GopherItem.spacer()],
-                  [GopherItem.i("    " + selector)]).string()
+  fun ref _not_found(selector: String): String =>
+    GopherMessage([GopherItem.i(" * Not Found.")],
+                  [GopherItem.spacer()]).string()
 
   fun _access_denied(): String =>
     GopherMessage([GopherItem.i(" *** Access Denied *** ")],
@@ -166,12 +178,14 @@ class GopherServer is TCPConnectionNotify
     _log(Error) and
       _log.log("Connect failed!")
 
-  fun ref throttled(connection: TCPConnection ref) =>
-    Backpressure.apply(_auth)
-    _log(Warn) and
-      _log.log("Throttling.")
+  fun ref throttled(conn: TCPConnection ref) =>
+    if not _streaming then
+      Backpressure.apply(_auth)
+    end
+    _log(Fine) and
+      _log.log("Throttled.")
 
-  fun ref unthrottled(connection: TCPConnection ref) =>
+  fun ref unthrottled(conn: TCPConnection ref) =>
     Backpressure.release(_auth)
-    _log(Warn) and
-        _log.log("Unthrottling.")
+    _log(Fine) and
+        _log.log("Unthrottled.")

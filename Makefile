@@ -1,15 +1,15 @@
 .POSIX:
 .SUFFIXES:
+PONYC ?= ponyc
 
 .ifdef RELEASE
 VERSION = $$(cat VERSION)
-PONYC = ponyc
 .else
 VERSION = $$(cat VERSION)-$$(git rev-parse --short HEAD)
-PONYC = ponyc --debug
+PONY_ARGS ?= --debug
 .endif
 
-SRC_DIR = gopherXtreme
+SRC_DIR = gopherXTreme
 BUILD_DIR = build
 SOURCE_FILES := $(shell find $(SRC_DIR) -name \*.pony)
 
@@ -22,7 +22,7 @@ $(BUILD_DIR):
 	mkdir $(BUILD_DIR)
 
 $(SRC_DIR): version.pony $(BUILD_DIR) $(SOURCE_FILES)
-	$(PONYC) $(SRC_DIR) -o $(BUILD_DIR)
+	$(PONYC) $(PONY_ARGS) $(SRC_DIR) -o $(BUILD_DIR)
 
 clean:
 	echo '' > $(SRC_DIR)/version.pony

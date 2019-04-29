@@ -1,0 +1,15 @@
+primitive Version
+  fun apply(): String =>
+    "%%VERSION%%"
+
+primitive ProductName
+  fun apply(): String =>
+    "GopherXTreme"
+
+primitive ProductNameAndVersion
+  fun apply(): String val =>
+    (recover
+      String(ProductName().size() + Version().size() + 1)
+    end) .> append(ProductName())
+         .> append("/")
+         .> append(Version())
