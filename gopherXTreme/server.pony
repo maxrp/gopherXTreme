@@ -97,7 +97,8 @@ class GopherServer is TCPConnectionNotify
     conn.write(consume message)
     conn.unmute()
     conn.dispose()
-    true
+    // Don't handle selectors split across multiple fragments.
+    false
 
   fun ref sent(conn: TCPConnection ref,
                data: (String val | Array[U8 val] val)):
@@ -130,24 +131,23 @@ class GopherServer is TCPConnectionNotify
     end
 
   fun _list_dir(path: FilePath, rel_path: String): String =>
-    var dir_entries: Array[GopherItem] = []
+    var dir_entries: Array[String] = []
     let base = try FilePath(_base, rel_path)? else _base end
     let dir_menu = GopherDirMenu(dir_entries, base, rel_path, _host, _port)
     path.walk(dir_menu)
-    GopherMessage([GopherItem.i(" * Listing: " + rel_path)],
-                  dir_entries).string()
+    dir_entries.unshift(GopherItem.i(" * Listing: " + rel_path))
+    GopherMessage(dir_entries)
 
   fun ref _not_found(selector: String): String =>
-    GopherMessage([GopherItem.i(" * Not Found.")],
-                  [GopherItem.spacer()]).string()
+    GopherMessage([GopherItem.i(" * Not Found.")])
 
   fun _access_denied(): String =>
-    GopherMessage([GopherItem.i(" *** Access Denied *** ")],
-                  [GopherItem.i("*   *      *      *   *")]).string()
+    GopherMessage([GopherItem.i(" *** Access Denied *** ")])
 
   fun _wut(): String =>
-    GopherMessage([GopherItem.spacer(); GopherItem.i(" wut?")],
-                  [GopherItem.i(" ^_^Â ")]).string()
+    GopherMessage([GopherItem.spacer()
+                   GopherItem.i(" wut?")
+                   GopherItem.i(" ^_^")])
 
   fun ref closed(conn: TCPConnection ref) =>
     _log(Info) and _log.log(

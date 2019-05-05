@@ -70,52 +70,23 @@ primitive GopherFileType
       Gopher.file()
     end
 
-class GopherItem is Stringable
-  let item_type: U8
-  var display_string: String = ""
-  var selector: String = ""
-  var _align: Align = AlignLeft
-  var host: String = "NULL"
-  var port: String = "0"
-
-  new create(item_type': U8,
-             display_string': String,
-             selector': String,
-             host': String,
-             port': String,
-             align': Align = AlignLeft) =>
-    _align = align'
-    item_type = item_type'
-    display_string = display_string'
-    selector = selector'
-    host = host'
-    port = port'
-
-  new i(display_string': String, align: Align = AlignLeft) =>
-    _align = align
-    item_type = Gopher.info()
-    display_string = display_string'
-
-  new link(display_string': String, url: String) =>
-    item_type = Gopher.html()
-    selector = "URL:" + url
-    display_string = display_string'
-
-  new spacer() =>
-    item_type = Gopher.info()
-
-  fun string(): String iso^ =>
+primitive GopherItem
+  fun apply(item_type: U8,
+            display_string: String = "",
+            selector: String = "",
+            host: String = "NULL",
+            port: String = "0"): String iso^ =>
     let final_display_string =
       if display_string.size() < 70 then
-        Format(display_string where width=70, align=_align)
+        Format(display_string where width=70, align=AlignLeft)
       elseif display_string.size() > 70 then
         display_string.trim(0, 70)
       else
         display_string
       end
-    // 74: description length of 70 + 3 tabs and 1 item_type
+    // 76: description length of 70 + 3 tabs, CRLF and 1 item_type
     (recover
-      String(74 + selector.size() + host.size() + port.size())
+      String(76 + selector.size() + host.size() + port.size())
     end)
       .> unshift(item_type)
       .> append(final_display_string)
@@ -125,25 +96,28 @@ class GopherItem is Stringable
       .> append(host)
       .> append("\t")
       .> append(port)
+      .> append(Gopher.eol())
 
-class GopherMessage is Stringable
-  let header: Array[GopherItem]
-  let items: Array[GopherItem]
-  let footer: Array[GopherItem]
+  fun i(display_string: String): String iso^ =>
+    GopherItem(Gopher.info(), display_string)
 
-  new create(header': Array[GopherItem],
-             items': Array[GopherItem]) =>
-    header = header'
-    items = items'
-    footer = [GopherItem.spacer()
-              GopherItem.i(ProductNameAndVersion()
-                where align=AlignRight)]
+  fun html(display_string: String, url: String): String iso^ =>
+    GopherItem(Gopher.html(),
+               display_string,
+               "URL:" + url)
 
-  fun string(): String iso^ =>
+  fun spacer(): String iso^ =>
+    GopherItem(Gopher.info())
+
+primitive GopherMessage
+  fun apply(items: Array[String]): String iso^ =>
     var message = recover String end
-    for item in [header; items; footer].values() do
-      message.append(Gopher.eol().join(Iter[Stringable](item.values())))
-      message.append(Gopher.eol())
+    for item in items.values() do
+      message.append(consume item)
     end
+    message.append(GopherItem.spacer())
+    message.append(GopherItem.i(Format(ProductNameAndVersion() where
+                                width=70,
+                                align=AlignRight)))
     message.append(Gopher.eom())
     message

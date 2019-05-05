@@ -9,13 +9,13 @@ primitive BytesPer
   fun tb(): USize => 1_099_511_627_776
 
 class GopherDirMenu
-  let _results: Array[GopherItem]
+  let _results: Array[String]
   let _base: FilePath
   let _path: String
   let _host: String
   let _port: String
 
-  new create(results': Array[GopherItem],
+  new create(results': Array[String],
              base': FilePath,
              rel_path: String,
              host': String,
@@ -69,11 +69,12 @@ class GopherDirMenu
           + Format(_mtime(path_info) where width=10, align=AlignLeft)
           + Format(path_size where width=10, align=AlignRight)
 
-        _results.push(GopherItem.create(item_type,
-          listing,
-          Path.join("/", Path.join(_path, entry)),
-          _host,
-          _port
+        _results.push(GopherItem(item_type,
+                                 listing,
+                                 Path.join("/",
+                                           Path.join(_path, entry)),
+                                 _host,
+                                 _port
         ))
       end
     end
