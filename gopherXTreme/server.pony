@@ -66,7 +66,7 @@ class GopherServer is TCPConnectionNotify
     let message =
       if reqstr.at("\r") and reqstr.at("\n", 1) then
         _selector = "index"
-        _list_dir(_base, "/")
+        _gophermap(_base)
       else
         // prepare the selector
         _selector = reqstr.clone() .> rstrip()
@@ -84,13 +84,13 @@ class GopherServer is TCPConnectionNotify
             let path = FilePath(_base, _selector.clone())?
             let path_info = FileInfo(path)?
             match path_info
-            | if path_info.directory => _list_dir(path, _selector)
+            | if path_info.directory => _gophermap(path)
             | if path_info.file => _stream_file(conn, path)
             else
               _wut() // how did we get here???
             end
           else
-            _not_found(_selector)
+            _not_found()
           end
         end
       end
@@ -107,7 +107,7 @@ class GopherServer is TCPConnectionNotify
     data
 
   fun ref sentv(conn: TCPConnection ref,
-               data: ByteSeqIter val): ByteSeqIter val =>
+                data: ByteSeqIter val): ByteSeqIter val =>
     for chunk in data.values() do
       _sent_size = _sent_size + chunk.size()
     end
@@ -127,18 +127,27 @@ class GopherServer is TCPConnectionNotify
       end
       ""
     else
-      _not_found(path.path)
+      _not_found()
+    end
+
+  fun _gophermap(path: FilePath): String =>
+    if GopherMap.exists(_base, path) then
+      GopherMap(path)
+    else
+      let selector: String =
+        if _selector != "" then _selector else "/" end
+      _list_dir(path, selector)
     end
 
   fun _list_dir(path: FilePath, rel_path: String): String =>
-    var dir_entries: Array[String] = []
+    var dir_entries: Array[String] =
+      [GopherItem.i(" * Listing: " + rel_path)]
     let base = try FilePath(_base, rel_path)? else _base end
     let dir_menu = GopherDirMenu(dir_entries, base, rel_path, _host, _port)
     path.walk(dir_menu)
-    dir_entries.unshift(GopherItem.i(" * Listing: " + rel_path))
     GopherMessage(dir_entries)
 
-  fun ref _not_found(selector: String): String =>
+  fun _not_found(): String =>
     GopherMessage([GopherItem.i(" * Not Found.")])
 
   fun _access_denied(): String =>

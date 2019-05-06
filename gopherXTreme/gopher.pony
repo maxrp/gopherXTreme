@@ -32,6 +32,28 @@ primitive Gopher
   fun sound():        U8 => 's'
   fun video():        U8 => ';'
 
+  fun types(): Array[U8] => [ file()
+                              directory()
+                              cso()
+                              err()
+                              binhex()
+                              dos_binary()
+                              archive()
+                              uuencoded()
+                              index_search()
+                              telnet()
+                              binary()
+                              mirror()
+                              tn320()
+                              gif()
+                              image()
+                              document()
+                              html()
+                              info()
+                              mime()
+                              sound()
+                              video() ]
+
 primitive GopherFileType
   fun apply(file: FilePath): U8 =>
     match Path.ext(file.path).lower()
