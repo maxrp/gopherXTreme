@@ -1,5 +1,5 @@
 # Within this project
-- Implement Gophermap support, minus dynamic maps
+- Implement URL: selector redirection
 - Implement Gophermap validator
 - Implement INI settings
 - Implement Gopher+ (if I can find a client to test it with)

@@ -8,6 +8,31 @@ primitive BytesPer
   fun gb(): USize => 1_073_741_824
   fun tb(): USize => 1_099_511_627_776
 
+primitive ListDir
+  fun apply(conf: GopherConf val,
+            path: FilePath,
+            rel_path: String,
+            raw: Bool = false): String =>
+    var dir_entries: Array[String] =
+      if not raw then
+        [GopherItem.i(" * Listing: " + rel_path)]
+      else
+        []
+      end
+    let base =
+      try
+        FilePath(conf.server_path, rel_path)?
+      else
+        conf.server_path
+      end
+    let dir_menu = GopherDirMenu(dir_entries, base, rel_path, conf.hostname, conf.port)
+    path.walk(dir_menu)
+    if not raw then
+      GopherMessage(dir_entries)
+    else
+      Flatten(dir_entries)
+    end
+
 class GopherDirMenu
   let _results: Array[String]
   let _base: FilePath

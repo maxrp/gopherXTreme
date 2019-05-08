@@ -81,18 +81,18 @@ actor Main
     let log_formatter = TimestampLogFormatter(time_format)
     let logger = StringLogger(Info, env.out, log_formatter)
 
+    let conf = GopherConf(server_path, hostname, port)
+
     // Spin up the GopherListener
     try
       TCPListener(env.root as AmbientAuth,
                   recover
                     GopherListener(env.root as BackpressureAuth,
                                    logger,
-                                   server_path,
-                                   hostname,
-                                   port.clone())
+                                   conf)
                   end,
-                  hostname,
-                  port,
+                  conf.hostname,
+                  conf.port,
                   conn_limit,
                   init_size,
                   max_size)

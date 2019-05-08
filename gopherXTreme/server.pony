@@ -5,13 +5,23 @@ use "logger"
 use "net"
 use "time"
 
+primitive GopherServerMessage
+  fun not_found(): String =>
+    GopherMessage([GopherItem.i(" * Not Found.")])
+
+  fun access_denied(): String =>
+    GopherMessage([GopherItem.i(" * Access Denied.")])
+
+  fun wut(): String =>
+    GopherMessage([GopherItem.spacer()
+                   GopherItem.i(" wut? ")
+                   GopherItem.i("\"^_^  ")])
+
 class GopherServer is TCPConnectionNotify
   let _auth: BackpressureAuth
-  let _base: FilePath
-  let _buffer_length: USize
-  let _host: String
-  let _port: String
   let _log: Logger[String]
+  let _conf: GopherConf val
+  let _buffer_length: USize
   var _remote_ip: String = ""
   var _remote_port: String = ""
   var _selector: String = ""
@@ -20,16 +30,12 @@ class GopherServer is TCPConnectionNotify
 
   new iso create(auth': BackpressureAuth,
                  log': Logger[String],
-                 host': String,
-                 port': String,
-                 base': FilePath,
+                 conf': GopherConf val,
                  buffer_length': USize = 1024) =>
     _auth = auth'
     _log = log'
-    _base = base'
+    _conf = conf'
     _buffer_length = buffer_length'
-    _host = host'
-    _port = port'
 
   fun ref accepted(conn: TCPConnection ref) =>
     try
@@ -68,7 +74,7 @@ class GopherServer is TCPConnectionNotify
     let message =
       if reqstr.at("\r") and reqstr.at("\n", 1) then
         _selector = "index"
-        _gophermap(_base)
+        _gophermap(_conf.server_path)
       else
         // prepare the selector
         _selector =
@@ -87,20 +93,20 @@ class GopherServer is TCPConnectionNotify
 
         // reject requests for hidden files
         if _selector.at(".") then
-          GopherServerMessage("access denied")
+          GopherServerMessage.access_denied()
         else
           // look up the selector
           try
-            let path = FilePath(_base, _selector.clone())?
+            let path = FilePath(_conf.server_path, _selector.clone())?
             let path_info = FileInfo(path)?
             match path_info
             | if path_info.directory => _gophermap(path)
-            | if path_info.file => _stream_file(conn, path)
+            | if path_info.file      => _stream_file(conn, path)
             else
-              GopherServerMessage("wut")
+              GopherServerMessage.wut()
             end
           else
-            GopherServerMessage("not found")
+            GopherServerMessage.not_found()
           end
         end
       end
@@ -137,25 +143,17 @@ class GopherServer is TCPConnectionNotify
       end
       ""
     else
-      GopherServerMessage("not found")
+      GopherServerMessage.not_found()
     end
 
   fun _gophermap(path: FilePath): String =>
-    if GopherMap.exists(_base, path) then
-      GopherMap(path)
+    if GopherMap.exists(_conf.server_path, path) then
+      GopherMap(_conf, path)
     else
-      let selector: String =
-        if _selector != "" then _selector else "/" end
-      _list_dir(path, selector)
+      let rel_path: String =
+        if _selector == "index" then "/" else _selector end
+      ListDir(_conf, path, rel_path)
     end
-
-  fun _list_dir(path: FilePath, rel_path: String): String =>
-    var dir_entries: Array[String] =
-      [GopherItem.i(" * Listing: " + rel_path)]
-    let base = try FilePath(_base, rel_path)? else _base end
-    let dir_menu = GopherDirMenu(dir_entries, base, rel_path, _host, _port)
-    path.walk(dir_menu)
-    GopherMessage(dir_entries)
 
   fun ref closed(conn: TCPConnection ref) =>
     _log(Info) and _log.log(

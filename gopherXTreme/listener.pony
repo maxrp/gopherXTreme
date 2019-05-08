@@ -4,22 +4,16 @@ use "logger"
 use "net"
 
 class GopherListener is TCPListenNotify
-  let base: FilePath
-  let host: String
-  let port: String
   let _auth: BackpressureAuth
   let _log: Logger[String]
+  let _conf: GopherConf val
 
   new iso create(auth': BackpressureAuth,
                  log': Logger[String],
-                 base': FilePath,
-                 host': String,
-                 port': String) =>
+                 conf': GopherConf val) =>
     _auth = auth'
     _log = log'
-    base = base'
-    host = host'
-    port = port'
+    _conf = conf'
 
   fun ref listening(listen: TCPListener ref) =>
     try
@@ -36,4 +30,4 @@ class GopherListener is TCPListenNotify
     listen.close()
 
   fun ref connected(listen: TCPListener ref): TCPConnectionNotify iso^ =>
-    GopherServer(_auth, _log, host, port, base)
+    GopherServer(_auth, _log, _conf)
