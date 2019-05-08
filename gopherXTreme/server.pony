@@ -52,6 +52,7 @@ class GopherServer is TCPConnectionNotify
   fun ref received(conn: TCPConnection ref,
                    data: Array[U8] iso,
                    times: USize): Bool =>
+    // Client requests should really be very short, stop reading them
     conn.mute()
 
     // enforce a maximum request length
@@ -62,22 +63,31 @@ class GopherServer is TCPConnectionNotify
     // truncate the request at null if present
     try data.truncate(data.find('\0')?) end
 
-    var reqstr: String = String.from_iso_array(consume data)
+    let reqstr: String = String.from_iso_array(consume data)
+
     let message =
       if reqstr.at("\r") and reqstr.at("\n", 1) then
         _selector = "index"
         _gophermap(_base)
       else
         // prepare the selector
-        _selector = reqstr.clone() .> rstrip()
+        _selector =
+          try
+            // We really don't want any CR/LF to remain here
+            // as part of the selector
+            reqstr.clone() .> cut_in_place(reqstr.find("\n")?)
+                           .> cut_in_place(reqstr.find("\r")?)
+          else
+            reqstr.clone()
+          end
 
         if _selector.at("/") then
-          _selector = _selector.substring(1)
+          _selector = _selector.trim(1)
         end
 
         // reject requests for hidden files
         if _selector.at(".") then
-          _access_denied()
+          GopherServerMessage("access denied")
         else
           // look up the selector
           try
@@ -87,10 +97,10 @@ class GopherServer is TCPConnectionNotify
             | if path_info.directory => _gophermap(path)
             | if path_info.file => _stream_file(conn, path)
             else
-              _wut() // how did we get here???
+              GopherServerMessage("wut")
             end
           else
-            _not_found()
+            GopherServerMessage("not found")
           end
         end
       end
@@ -127,7 +137,7 @@ class GopherServer is TCPConnectionNotify
       end
       ""
     else
-      _not_found()
+      GopherServerMessage("not found")
     end
 
   fun _gophermap(path: FilePath): String =>
@@ -146,17 +156,6 @@ class GopherServer is TCPConnectionNotify
     let dir_menu = GopherDirMenu(dir_entries, base, rel_path, _host, _port)
     path.walk(dir_menu)
     GopherMessage(dir_entries)
-
-  fun _not_found(): String =>
-    GopherMessage([GopherItem.i(" * Not Found.")])
-
-  fun _access_denied(): String =>
-    GopherMessage([GopherItem.i(" *** Access Denied *** ")])
-
-  fun _wut(): String =>
-    GopherMessage([GopherItem.spacer()
-                   GopherItem.i(" wut?")
-                   GopherItem.i(" ^_^")])
 
   fun ref closed(conn: TCPConnection ref) =>
     _log(Info) and _log.log(
