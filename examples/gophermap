@@ -1,0 +1,87 @@
+!Example gophermap for GopherXTreme
+##
+## This is a sample gophermap.
+##
+Creating a file called "gophermap" in a directory disables the normal 
+resource listing and replaces it with the contents of the map file. 
+GopherXTreme implements a gophermap format mostly similar to
+gophernicus. This example map is based on the gophernicus example.
+
+
+!The Format
+In a gophermap any line that doesn't contain a <TAB> character is 
+automatically converted to an type "i" gopher resource which are
+displayed as plain text in the client. These lines should be at most
+70 characters in width.
+..................................70..................................
+
+Lines which contain tabs are intepreted as other varieties of gopher
+resource lines which the client will render as links.
+
+The format of a gophermap resource line is simple:
+Xname<TAB>selector<TAB>host<TAB>port
+
+Where:
+   X          is the gopher filetype
+   name       is the display string for the resource
+   selector   is the absolute path to the resource
+   host       is the hostname holding the resource
+   port       is the port the service is reachable on
+
+Type, name and selector are mandatory. 
+
+If you don't specify host or port the host and port of the current 
+server are used instead.
+
+
+!Supported File Types
+   0   text file
+   1   directory
+   2   CSO
+   3   error message
+   4   binhex
+   5   DOS binary (per RFC1436)
+   5   archive file (zip, tar etc) (like in contemporary practice)
+   6   uuencoded files
+   7   index search query
+   8   telnet session
+   9   binary file
+   +   Mirror of this site
+   T   A TN320 session
+   g   GIF image
+   I   generic image file (other than GIF)
+   d   document file (ps, pdf, doc etc)
+   h   HTML file
+   i   info text
+   M   MIME file (mbox, emails etc)
+   s   sound file
+   ;   video file
+   c   calendar file
+
+
+!Special Characters in GopherXTreme gophermaps
+   #          the line will be ignored
+   !title     title, which will be centered within 70 columns
+   =mapfile   include or execute other gophermap 
+   *          stop processing gophermap, include file listing
+
+
+!Example Resource Lines
+1Absolute internal link	/subdir
+1External link 	/	gopher.floodgap.com	70
+0Finger-to-gopher link	user	example.com	79
+hLink to a website	URL:http://www.google.com/
+hOld-school website link	GET%20/	metafilter.com	80  
+
+hLink to a local html page	/path/to/file.html
+5Link to an tar archive	/path/to/archive.tar.gz
+9Link to a binary file	/path/to/binary
+
+7Search engine query	/query
+8Telnet session	user	example.test	79
+
+Include a Textfile...
+=ABOUT
+
+Here we stop processing the gophermap and include the regular menu:
+*

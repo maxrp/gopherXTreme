@@ -245,22 +245,19 @@ primitive GopherMap
                            path,
                            consume final_line where raw=true)
     else
+      let item_fun = GopherItem~apply(msg_type,
+                                      _access(fields, 0),
+                                      _access(fields, 1))
       match fields.size()
       // base case
       | 0 => GopherItem(msg_type, consume final_line)
       // 2 fields: display string and selector specified, local link
       // (or HTTP link which needs redirection)
-      | 2 => GopherItem(msg_type,
-                        _access(fields, 0),
-                        _access(fields, 1),
-                        conf.hostname,
-                        conf.port)
+      | 2 => item_fun(conf.hostname,
+                      conf.port)
       // 4 fields: display string, selector, host and port specified
-      | 4 => GopherItem(msg_type,
-                        _access(fields, 0),
-                        _access(fields, 1),
-                        _access(fields, 2),
-                        _access(fields, 3))
+      | 4 => item_fun(_access(fields, 2),
+                      _access(fields, 3))
       else
         let fields_len = fields.size().string()
         GopherItem.err("Invalid field count ("
