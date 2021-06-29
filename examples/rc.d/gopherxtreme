@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# PROVIDE: gopherxtreme
+# REQUIRE: networking
+# KEYWORD:
+
+. /etc/rc.subr
+
+name="gopherxtreme"
+rcvar="gopherxtreme_enable"
+gopherxtreme_command="/usr/local/bin/gopherXTreme"
+pidfile="/var/run/gopherxtreme/${name}.pid"
+command="/usr/sbin/daemon"
+
+load_rc_config $name
+: ${gopherxtreme_enable:=no}
+: ${gopherxtreme_extra_flags:=""}
+command_args="-S -t gopherXTreme -T daemon -P ${pidfile} -r -f ${gopherxtreme_command} ${gopherxtreme_extra_flags}"
+
+echo "${command_args}"
+run_rc_command "$1"
